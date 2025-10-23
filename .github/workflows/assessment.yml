@@ -38,10 +38,12 @@ jobs:
       - name: Install merge dependencies
         run: |
           python -m pip install --upgrade pip
-          [ -f merge/requirements.txt ] && pip install -r merge/requirements.txt || true
-      # B) If you keep a single root requirements.txt instead, replace the step above with:
-      # - name: Install dependencies
-      #   run: pip install -r requirements.txt
+          if [ -f merge/requirements.txt ]; then
+            pip install -r merge/requirements.txt
+          fi
+          # Ensure openai exists even if not in requirements
+          python -c "import openai" 2>/dev/null || pip install openai
+
 
       - name: Run merge script
         env:
