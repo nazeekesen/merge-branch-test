@@ -1,0 +1,129 @@
+name: Combined_Merge_and_Generate_Assessment
+
+on:
+  workflow_dispatch:
+    inputs:
+      openai_api_key:
+        description: 'OpenAI API Key'
+        required: false
+      run_mode:
+        description: 'Choose how to run ./run.sh'
+        required: true
+        type: choice
+        options:
+          - Without Previous Scores
+          - With Previous Scores
+        default: Without Previous Scores
+  push:
+    paths:
+      - 'merge/**'
+      - 'report_generation/**'
+      - '.github/workflows/combined_assessment.yml'
+
+jobs:
+  merge-reports:
+    name: Merge Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # Pick ONE of these depending on your repo structure:
+      # A) If merge has its own requirements:
+      - name: Install merge dependencies
+        run: |
+          python -m pip install --upgrade pip
+          [ -f merge/requirements.txt ] && pip install -r merge/requirements.txt || true
+      # B) If you keep a single root requirements.txt instead, replace the step above with:
+      # - name: Install dependencies
+      #   run: pip install -r requirements.txt
+
+      - name: Run merge script
+        env:
+          # Falls back to repo secret if manual input is empty or on push
+          OPENAI_API_KEY: ${{ github.event.inputs.openai_api_key || secrets.OPENAI_API_KEY }}
+        run: python merge/combine.py
+
+      - name: Upload merged Markdown
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-merged-report
+          path: merge/output/combined_report.md
+          if-no-files-found: error
+
+  generate-with-dash:
+    name: Generate Dash Server & Export Reports
+    needs: merge-reports
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: report_generation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download merged Markdown
+        uses: actions/download-artifact@v4
+        with:
+          name: final-merged-report
+          path: report_generation/data/input
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install report dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Prefer a maintained Chrome setup action over manual apt
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Prepare inputs for run.sh
+        run: |
+          mkdir -p data
+          test -f data/input/combined_report.md || { echo "Missing data/input/combined_report.md"; exit 1; }
+          cp data/input/combined_report.md data/combined_report.md
+
+      - name: Run Dash server and wait until ready
+        env:
+          RUN_MODE: ${{ github.event.inputs.run_mode }}
+        run: |
+          set -euo pipefail
+          if [ "${RUN_MODE}" = "With Previous Scores" ]; then
+            test -f data/previous_report.md || { echo "Missing data/previous_report.md"; exit 1; }
+            CMD="./run.sh -p data/previous_report.md -c data/combined_report.md"
+          else
+            # If run.sh doesn't default to that path, pass -c explicitly:
+            CMD="./run.sh -c data/combined_report.md"
+          fi
+          echo "Starting: ${CMD}"
+          nohup ${CMD} > dash.log 2>&1 &
+          echo "Waiting for Dash to start on port 8050…"
+          timeout 180 bash -c 'until curl -s http://127.0.0.1:8050/ > /dev/null; do echo " still waiting…"; sleep 5; done'
+          echo "Dash is up!"
+
+      - name: Upload text report
+        uses: actions/upload-artifact@v4
+        with:
+          name: text-report
+          path: report_generation/data/output/report.txt
+          if-no-files-found: warn
+
+      - name: Export dashboard to PDF
+        run: python export_pdf.py --url "http://127.0.0.1:8050" --output dash_report.pdf
+
+      - name: Upload PDF report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dash_report_pdf
+          path: report_generation/dash_report.pdf
+          if-no-files-found: error
