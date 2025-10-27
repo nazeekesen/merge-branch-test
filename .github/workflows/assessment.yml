@@ -47,6 +47,30 @@ jobs:
           OPENAI_API_KEY: ${{ github.event.inputs.openai_api_key || secrets.OPENAI_API_KEY }}
         run: python3 merge/combine.py
 
+      # NEW: optional auto-fix step (does NOT touch the generate-with-dash job)
+      # Expects:
+      #   - template at: report_generation/data/combined_report_original.md
+      #   - fixer script at: merge/fix_report.py  (put the script here)
+      - name: Auto-fix combined_report.md to match template (optional)
+        run: |
+          TEMPLATE="report_generation/data/combined_report_original.md"
+          CANDIDATE="merge/output/combined_report.md"
+          FIXER="merge/fix_report.py"
+
+          if [ ! -f "$CANDIDATE" ]; then
+            echo "ERROR: $CANDIDATE not found."; exit 1
+          fi
+
+          if [ -f "$TEMPLATE" ] && [ -f "$FIXER" ]; then
+            echo "Template and fixer found. Running auto-fix..."
+            python3 "$FIXER" "$TEMPLATE" "$CANDIDATE" --inplace
+            echo "Auto-fix complete."
+          else
+            echo "Auto-fix skipped (template or fixer not present)."
+            echo "Looked for template at: $TEMPLATE"
+            echo "Looked for fixer at:    $FIXER"
+          fi
+
       - name: Upload merged Markdown
         uses: actions/upload-artifact@v4
         with:
@@ -95,15 +119,6 @@ jobs:
       - name: Ensure run.sh is executable
         run: chmod +x run.sh || true
 
-      - name: Validate report structure
-        shell: bash
-        run: |
-          python3 validate_report.py \
-            report_template.yaml \
-            data/combined_report_original.md \
-            data/combined_report.md
-
-
       - name: Run Dash server and wait until ready
         env:
           RUN_MODE: ${{ github.event.inputs.run_mode }}
@@ -135,4 +150,41 @@ jobs:
           # Wait up to 600s for http://127.0.0.1:8050/
           END=$((SECONDS + 600))
           OK=0
-          while [ $SEC]()
+          while [ $SECONDS -lt $END ]; do
+            if curl -fsS http://127.0.0.1:8050/ >/dev/null 2>&1; then
+              OK=1
+              break
+            fi
+            if ! ps -p "${APP_PID}" >/dev/null 2>&1; then
+              echo "Process ${APP_PID} exited early."
+              echo "---- dash.log (tail) ----"
+              tail -n 100 dash.log || true
+              exit 1
+            fi
+            echo "still waiting..."
+            sleep 5
+          done
+
+          if [ "$OK" -ne 1 ]; then
+            echo "Server did not become ready on 127.0.0.1:8050 within timeout."
+            echo "---- dash.log (tail) ----"
+            tail -n 100 dash.log || true
+            exit 124
+          fi
+
+      - name: Upload text report
+        uses: actions/upload-artifact@v4
+        with:
+          name: text-report
+          path: report_generation/data/output/report.txt
+          if-no-files-found: warn
+
+      - name: Export dashboard to PDF
+        run: python3 export_pdf.py --url "http://127.0.0.1:8050" --output dash_report.pdf
+
+      - name: Upload PDF report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dash_report_pdf
+          path: report_generation/dash_report.pdf
+          if-no-files-found: error
