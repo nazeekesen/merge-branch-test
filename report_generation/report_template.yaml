@@ -1,0 +1,116 @@
+# report_generation/report_template.yaml
+outline:
+  - title: "# Final Kubernetes Assessment Report"
+    level: 1
+
+  - title: "## Executive Summary"
+    level: 2
+
+  - title: "## 1. Critical Risks"
+    level: 2
+    children:
+      - title: "### 1. **Insufficient Business Continuity and Disaster Recovery (BCDR) Planning**"
+        level: 3
+        require:
+          - regex: "^\\*\\*Business Impact:\\*\\*"
+          - regex: "^\\*\\*Solution:\\*\\*"
+          - regex: "^- \\*\\*Immediate:\\*\\*"
+          - regex: "^- \\*\\*Short-term:\\*\\*"
+          - regex: "^- \\*\\*Long-term:\\*\\*"
+      - title: "### 2. **Weak Container Image Management and Security**"
+        level: 3
+        require:
+          - regex: "^\\*\\*Business Impact:\\*\\*"
+          - regex: "^\\*\\*Solution:\\*\\*"
+          - regex: "^- \\*\\*Immediate:\\*\\*"
+          - regex: "^- \\*\\*Short-term:\\*\\*"
+          - regex: "^- \\*\\*Long-term:\\*\\*"
+      - title: "### 3. **Inadequate Infrastructure Automation and Configuration Management**"
+        level: 3
+        require:
+          - regex: "^\\*\\*Business Impact:\\*\\*"
+          - regex: "^\\*\\*Solution:\\*\\*"
+          - regex: "^- \\*\\*Immediate:\\*\\*"
+          - regex: "^- \\*\\*Short-term:\\*\\*"
+          - regex: "^- \\*\\*Long-term:\\*\\*"
+      - title: "### 4. **Deficient Security Controls and User Access Management**"
+        level: 3
+        require:
+          - regex: "^\\*\\*Business Impact:\\*\\*"
+          - regex: "^\\*\\*Solution:\\*\\*"
+          - regex: "^- \\*\\*Immediate:\\*\\*"
+          - regex: "^- \\*\\*Short-term:\\*\\*"
+          - regex: "^- \\*\\*Long-term:\\*\\*"
+      - title: "### 5. **Limited Monitoring, Logging, and Observability**"
+        level: 3
+        require:
+          - regex: "^\\*\\*Business Impact:\\*\\*"
+          - regex: "^\\*\\*Solution:\\*\\*"
+          - regex: "^- \\*\\*Immediate:\\*\\*"
+          - regex: "^- \\*\\*Short-term:\\*\\*"
+          - regex: "^- \\*\\*Long-term:\\*\\*"
+
+  - title: "## 2. Platform Maturity Scoring"
+    level: 2
+
+  - title: "#### **Enterprise Platform Viability**"
+    level: 4
+    require:
+      - regex: "^- \\*\\*Production-Ready Environment \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Roles and Responsibilities \\(RACI\\) \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Leadership Commitment \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Security Integration \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Engagement and Communication \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Workload Understanding \\(App Workloads\\) \\(Score: .*\\)\\*\\*"
+
+  - title: "### B. Platform Success"
+    level: 3
+    require:
+      - regex: "^- \\*\\*DevOps Skills \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Automated Deployments \\(Automation\\) \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Release Engineering \\(Change Management\\) \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Site Reliability Engineering \\(Reliability\\) \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*User Access \\(Access\\) \\(Score: .*\\)\\*\\*"
+
+  - title: "### C. Platform Upkeep"
+    level: 3
+    require:
+      - regex: "^- \\*\\*Upgrades \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Operational Excellence \\(Day-2 Ops\\) \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Monitoring \\(Logging, Metrics, Alerts\\) \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Capacity Planning and Management \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Business Continuity and Disaster Recovery \\(BCDR\\) \\(Score: .*\\)\\*\\*"
+
+  - title: "### D. Platform Support"
+    level: 3
+    require:
+      - regex: "^- \\*\\*Proactive Support \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Compliance Coverage \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Escalation Processes \\(Score: .*\\)\\*\\*"
+      - regex: "^- \\*\\*Third-Party Services Integration \\(Score: .*\\)\\*\\*"
+
+  - title: "## 3. Final Maturity Score"
+    level: 2
+    require:
+      - regex: "^\\|\\s*Rubric\\s*\\|\\s*Current %\\s*\\|\\s*Target %\\s*\\|$"
+      - regex: "\\|\\s*Overall\\s*\\|\\s*\\d+\\.\\d+ %\\s*\\|\\s*\\d+\\.\\d+ %\\s*\\|$"
+
+  - title: "## 4. Compliance Posture"
+    level: 2
+    require:
+      - regex: "^\\*\\*Overall Compliance Score:\\*\\*\\s*\\*\\*\\d+%\\*\\*"
+
+  - title: "## 5. Recommendations Summary"
+    level: 2
+    require:
+      - regex: "^- \\*\\*Immediate \\(Next 2 Weeks\\):\\*\\*"
+      - regex: "^- \\*\\*Short-term \\(30–90 Days\\):\\*\\*"
+      - regex: "^- \\*\\*Strategic \\(6–12 Months\\):\\*\\*"
+
+  - title: "## 6. Technical Focus Area Scores"
+    level: 2
+    require:
+      - regex: "^\\|\\s*Area\\s*\\|\\s*Score \\(0–2\\)\\s*\\|\\s*Justification\\s*\\|$"
+
+  - title: "# Conclusion"
+    level: 1

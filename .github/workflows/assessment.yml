@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       openai_api_key:
-        description: 'OpenAI API Key (optional; secret fallback used if empty)'
+        description: 'OpenAI API Key (optional; uses secret if empty)'
         required: false
       run_mode:
         description: 'Choose how to run ./run.sh'
@@ -35,54 +35,17 @@ jobs:
 
       - name: Install merge dependencies
         run: |
-          python -m pip install --upgrade pip
+          python3 -m pip install --upgrade pip
           if [ -f merge/requirements.txt ]; then
-            pip install -r merge/requirements.txt
+            python3 -m pip install -r merge/requirements.txt
           fi
-          # Ensure 'openai' exists even if not in requirements
-          python -c "import openai" 2>/dev/null || pip install openai
-
-      # Prefer the repo secret; use manual input only if non-empty
-      - name: Resolve & validate API key
-        env:
-          INPUT_KEY: ${{ github.event.inputs.openai_api_key }}
-          SECRET_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          set -euo pipefail
-          KEY="${INPUT_KEY:-}"
-          if [ -z "$KEY" ]; then
-            KEY="${SECRET_KEY:-}"
-          fi
-          # Trim whitespace
-          KEY="$(printf '%s' "$KEY" | awk '{$1=$1};1')"
-          if [ -z "$KEY" ]; then
-            echo "ERROR: OPENAI_API_KEY is empty. Set repo secret OPENAI_API_KEY or provide a non-empty input." >&2
-            exit 1
-          fi
-          case "$KEY" in
-            '***'|***|*'*** '*)
-              echo "ERROR: OPENAI_API_KEY looks like a masked/placeholder value (***). Provide a real key." >&2
-              exit 1
-              ;;
-          esac
-          if [ ${#KEY} -lt 20 ]; then
-            echo "ERROR: OPENAI_API_KEY seems too short." >&2
-            exit 1
-          fi
-          echo "OPENAI_API_KEY=$KEY" >> $GITHUB_ENV
+          # Always ensure openai is present
+          python3 -m pip install openai
 
       - name: Run merge script
         env:
-          OPENAI_API_KEY: ${{ env.OPENAI_API_KEY }}
-        run: python merge/combine.py
-
-      - name: Debug merge output
-        run: |
-          echo "::group::merge/output listing"
-          ls -lah merge || true
-          ls -lah merge/output || true
-          echo "::endgroup::"
-          test -f merge/output/combined_report.md || { echo "Expected merge/output/combined_report.md missing"; exit 1; }
+          OPENAI_API_KEY: ${{ github.event.inputs.openai_api_key || secrets.OPENAI_API_KEY }}
+        run: python3 merge/combine.py
 
       - name: Upload merged Markdown
         uses: actions/upload-artifact@v4
@@ -92,7 +55,7 @@ jobs:
           if-no-files-found: error
 
   generate-with-dash:
-    name: Generate Dash Server & Export Reports
+    name: Generate Dash Server and Export Reports
     needs: merge-reports
     runs-on: ubuntu-latest
     defaults:
@@ -108,15 +71,6 @@ jobs:
           name: final-merged-report
           path: report_generation/data/input
 
-      - name: Debug downloaded artifact layout
-        run: |
-          echo "::group::Downloaded layout"
-          ls -lah
-          ls -lah data || true
-          ls -lah data/input || true
-          echo "::endgroup::"
-          test -f data/input/combined_report.md || { echo "Missing data/input/combined_report.md"; exit 1; }
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -124,80 +78,61 @@ jobs:
 
       - name: Install report dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
 
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1
 
-      - name: Verify Chrome
-        run: google-chrome --version
-
       - name: Prepare inputs for run.sh
         run: |
           mkdir -p data
+          if [ ! -f data/input/combined_report.md ]; then
+            echo "Missing data/input/combined_report.md"; exit 1
+          fi
           cp data/input/combined_report.md data/combined_report.md
 
-      - name: Run Dash server and wait until ready (robust)
+      - name: Ensure run.sh is executable
+        run: chmod +x run.sh || true
+
+      - name: Validate report structure
+        shell: bash
+        run: |
+          python3 validate_report.py \
+            report_template.yaml \
+            data/combined_report_original.md \
+            data/combined_report.md
+
+
+      - name: Run Dash server and wait until ready
         env:
           RUN_MODE: ${{ github.event.inputs.run_mode }}
         run: |
           set -euo pipefail
 
-          echo "Verifying input file..."
-          test -s data/combined_report.md || { echo "Missing or empty data/combined_report.md"; exit 1; }
-          head -n 5 data/combined_report.md || true
+          echo "First lines of data/combined_report.md:"
+          head -n 10 data/combined_report.md || true
 
           : > dash.log
-
           if [ "${RUN_MODE}" = "With Previous Scores" ]; then
-            test -f data/previous_report.md || { echo "Missing data/previous_report.md"; exit 1; }
+            if [ ! -f data/previous_report.md ]; then
+              echo "Missing data/previous_report.md"; exit 1
+            fi
             CMD="./run.sh -p data/previous_report.md -c data/combined_report.md"
           else
             CMD="./run.sh -c data/combined_report.md"
           fi
-
           echo "Starting: ${CMD}"
-          # Expose typical env so the app can bind as expected
+
+          # Force predictable bind; app should read these if it supports them
           export HOST=0.0.0.0
           export PORT=8050
 
-          set -x
-          nohup ${CMD} > dash.log 2>&1 &
+          nohup ${CMD} >> dash.log 2>&1 &
           APP_PID=$!
-          set +x
-          echo "App PID: $APP_PID"
+          echo "App PID: ${APP_PID}"
 
-          echo "Waiting for Dash to start on http://127.0.0.1:8050 ..."
-          if ! timeout 300 bash -c 'until curl -fsS http://127.0.0.1:8050/ >/dev/null; do sleep 5; done'; then
-            echo "Server did not become ready within timeout."
-            echo "---- dash.log (tail) ----"
-            tail -n 200 dash.log || true
-            echo "---- process list ----"
-            ps -ef | grep -E "python|gunicorn|dash|run.sh" | grep -v grep || true
-            echo "---- listening ports ----"
-            (ss -lntp || netstat -lntp) 2>/dev/null || true
-            echo "---- pip list ----"
-            python -m pip list || true
-            exit 1
-          fi
-
-          echo "Dash is up!"
-          tail -n 50 dash.log || true
-
-      - name: Upload text report
-        uses: actions/upload-artifact@v4
-        with:
-          name: text-report
-          path: report_generation/data/output/report.txt
-          if-no-files-found: warn
-
-      - name: Export dashboard to PDF
-        run: python export_pdf.py --url "http://127.0.0.1:8050" --output dash_report.pdf
-
-      - name: Upload PDF report
-        uses: actions/upload-artifact@v4
-        with:
-          name: dash_report_pdf
-          path: report_generation/dash_report.pdf
-          if-no-files-found: error
+          # Wait up to 600s for http://127.0.0.1:8050/
+          END=$((SECONDS + 600))
+          OK=0
+          while [ $SEC]()
