@@ -59,7 +59,7 @@ jobs:
 
       - name: Validate fixed report structure
         run: |
-          python3 validate_report.py report_generation/data/combined_report_original.md merge/output/combined_report.md
+          python3 merge/validate_report.py report_generation/data/combined_report_original.md merge/output/combined_report.md
 
       - name: Upload merged Markdown
         uses: actions/upload-artifact@v4
