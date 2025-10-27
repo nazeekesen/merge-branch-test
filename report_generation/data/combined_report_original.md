@@ -92,7 +92,7 @@ Insufficient monitoring and logging capabilities impede the ability to detect, d
   *Findings:*Teams show uneven understanding of scheduling, requests/limits, and rollout strategies, causing resource contention and slow deployments. Gaps in workload planning reduce performance under peak load.
   *Resolution:* rovide targeted training on Kubernetes scheduling, resource management, and release strategies. Publish golden templates and run clinics to tune critical services with hands-on support.
 
-### Platform Success
+### **Platform Success**
 
 - **Operator & Developer Skills (DevOps Skills) (Score: 3) (Priority level: 2) (Personas: Operator, Manager, Developer)**
   *Findings:* The team has solid foundational DevOps capabilities and can handle routine platform management and application deployments. Depth in advanced practices is limited, which constrains platform efficiency and scalability.
@@ -113,7 +113,7 @@ Insufficient monitoring and logging capabilities impede the ability to detect, d
   *Findings:* Over-permissive roles and wildcard verbs still exist in several namespaces. Break-glass accounts are not consistently time-boxed or logged with business justification.
   *Resolution:* Refactor roles to least-privilege with deny-by-default patterns. Automate quarterly access reviews and alert on privileged verb usage outside change windows.
 
-### Platform Upkeep
+### **Platform Upkeep**
 
 - **Upgrades (Score: 3) (Priority level: 1) (Personas: Operator)**
   *Findings:* System upgrades are performed regularly; however, they lack comprehensive planning and thorough testing, increasing the risk of disruptions.The estate is on Kubernetes 1.30, which has a finite support window per provider; operating past that window increases security and compliance risk.
@@ -135,7 +135,7 @@ Insufficient monitoring and logging capabilities impede the ability to detect, d
   *Findings:* Backups exist, but restore validation is sporadic and DR runbooks are not regularly exercised. Recovery objectives (RPO/RTO) are not tied to business impact for all services.BCDR plans are minimally developed, leaving the platform vulnerable to operational disruptions and data loss.
   *Resolution:* Define service-level RPO/RTO and map them to restoration playbooks. Automate backup verification and schedule DR drills with tracked outcomes and remediation.
 
-### Platform Support
+### **Platform Support**
 
 - **Proactive Support (Score: 3) (Priority level: 2) (Personas: Operator, Developer, Manager)**
   *Findings:* Health checks and alerts are present, but deeper validations like backup/restores and dependency pings are manual. Incident readiness depends heavily on individual knowledge.
@@ -155,7 +155,7 @@ Insufficient monitoring and logging capabilities impede the ability to detect, d
 
 ## 3. Final Maturity Score
 
-| Rubric      | Current % | Target % |
+| Rubric      | Current % | TargЫet % |
 |-------------|-----------|----------|
 | Viability   | 50.00 %   | 65.00 %  |
 | Success     | 40.00 %   | 55.00 %  |
