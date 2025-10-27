@@ -52,17 +52,11 @@ jobs:
           CANDIDATE="merge/output/combined_report.md"
           FIXER="merge/fix_report.py"
 
-          if [ ! -f "$CANDIDATE" ]; then
-            echo "ERROR: $CANDIDATE not found."; exit 1
-          fi
+          test -f "$CANDIDATE" || { echo "Missing $CANDIDATE"; exit 1; }
+          test -f "$TEMPLATE"  || { echo "Missing $TEMPLATE"; exit 1; }
 
-          if [ -f "$TEMPLATE" ] && [ -f "$FIXER" ]; then
-            echo "Running auto-fix to enforce strict structure..."
-            python3 "$FIXER" "$TEMPLATE" "$CANDIDATE" --inplace --no-placeholder --drop-extra
-            echo "✅ Auto-fix done."
-          else
-            echo "Auto-fix skipped: template or fixer not found."
-          fi
+          python3 "$FIXER" "$TEMPLATE" "$CANDIDATE" --inplace --no-placeholder --drop-extra
+
 
 
       - name: Validate structure

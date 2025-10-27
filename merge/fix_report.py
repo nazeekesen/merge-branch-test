@@ -5,23 +5,23 @@ fix_report.py
 Take a template (reference) Markdown and a candidate Markdown.
 Produce a "fixed" candidate whose headings (text & level) and section order
 match the template. Section bodies are preserved from the candidate where
-we can map them by heading slug; missing sections are created with a stub;
-extra sections are appended at the end.
+we can map them by heading slug; missing sections are created with a stub
+(unless --no-placeholder). Extra sections can be appended at the end or
+dropped with --drop-extra.
 
 Usage:
   python3 fix_report.py template.md candidate.md -o fixed.md
   python3 fix_report.py template.md candidate.md --inplace
+  python3 fix_report.py template.md candidate.md --inplace --no-placeholder --drop-extra
 """
 
 import sys, re, os
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict
 
 HEADING_RE = re.compile(r'^(#{1,6})\s+(.+?)\s*$')
 LIST_RE    = re.compile(r'^\s*(?:[-*+]|\d+\.)\s+')
 TABLE_SEP  = re.compile(r'^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$')
 CODE_FENCE = re.compile(r'^\s*```')
-
-# ---------- utilities copied/adapted from your validator ----------
 
 def slugify(s: str) -> str:
     s = s.strip().lower()
@@ -31,15 +31,9 @@ def slugify(s: str) -> str:
     return s
 
 def parse_outline_and_blocks(text: str):
-    """
-    Returns:
-      outline: List[Tuple[level:int, title_slug:str]]
-      blocks_by_section: Dict[index_in_outline, List[str]]  (coarse block types)
-      Also returns: lines, heading_lines (for section slicing).
-    """
     lines = text.splitlines()
     outline: List[Tuple[int, str]] = []
-    sections: List[Tuple[int, int]] = []  # (start_line, end_line) per heading content
+    sections: List[Tuple[int, int]] = []
     heading_lines: List[int] = []
 
     for i, ln in enumerate(lines):
@@ -105,17 +99,9 @@ def parse_outline_and_blocks(text: str):
 
         blocks_by_section[si] = block_seq
 
-    return outline, blocks_by_section, lines, heading_lines[:-1]  # exclude EOF marker
-
-# ---------- fixer ----------
+    return outline, blocks_by_section, lines, heading_lines[:-1]
 
 def extract_sections(text: str):
-    """
-    Returns:
-      headings: List[Tuple[level:int, title_text:str, title_slug:str, line_index:int]]
-      body_by_slug: Dict[slug, List[str]]  (content lines between this heading and next)
-      preamble: List[str] lines before first heading (if any)
-    """
     lines = text.splitlines()
     headings: List[Tuple[int, str, str, int]] = []
     heading_idxs: List[int] = []
@@ -132,10 +118,8 @@ def extract_sections(text: str):
         if heading_idxs[0] > 0:
             preamble = lines[:heading_idxs[0]]
     else:
-        # No headings; entire doc is "preamble"
         preamble = lines
 
-    # slice bodies between headings
     body_by_slug: Dict[str, List[str]] = {}
     if heading_idxs:
         indices = heading_idxs + [len(lines)]
@@ -151,19 +135,11 @@ def rebuild_to_template(
     template_text: str,
     candidate_text: str,
     insert_placeholder: bool = True,
-    placeholder_text: str = "_This section was missing in the source and was created to match the template._"
-) -> Tuple[str, Dict[str, List[str]]]:
-    """
-    Build a new candidate that conforms to the template's heading levels, titles, and order.
-    Returns:
-      fixed_text
-      report: dict with keys: added, renamed, reordered, extra_appended
-    """
-    # Parse template
-    t_headings_raw, _, _, _ = parse_outline_and_blocks(template_text)
-    t_lines = template_text.splitlines()
-    # We also need original template heading texts (not slugs) and levels.
-    # Collect them by scanning lines:
+    placeholder_text: str = "_This section was missing in the source and was created to match the template._",
+    drop_extra: bool = False,
+):
+    # Parse template headings (levels + original text)
+    _, _, t_lines, _ = parse_outline_and_blocks(template_text)
     template_heads: List[Tuple[int, str]] = []
     for ln in t_lines:
         m = HEADING_RE.match(ln)
@@ -172,79 +148,67 @@ def rebuild_to_template(
             title = m.group(2).strip()
             template_heads.append((lvl, title))
 
-    # Parse candidate sections
+    # Candidate sections
     c_heads, c_bodies, c_preamble = extract_sections(candidate_text)
 
-    # Map candidate by slug
-    cand_by_slug: Dict[str, Tuple[int, str]] = {}  # slug -> (level, original_title_text)
+    # Map candidate by slug -> (level, title_text)
+    cand_by_slug: Dict[str, Tuple[int, str]] = {}
     for lvl, ttext, tslug, _ in c_heads:
         cand_by_slug[tslug] = (lvl, ttext)
 
     used_slugs = set()
     report: Dict[str, List[str]] = {
-        "added": [],
-        "renamed": [],
-        "reordered": [],
-        "extra_appended": [],
-        "preamble_kept": []
+        "added": [], "renamed": [], "reordered": [], "extra_appended": [], "preamble_kept": []
     }
 
     out_lines: List[str] = []
 
-    # Keep preamble at top if present (optional)
+    # Keep preamble if present (optional)
     if any(s.strip() for s in c_preamble):
         out_lines.extend(c_preamble)
-        if c_preamble and c_preamble[-1].strip() != "":
-            out_lines.append("")  # blank line
+        if out_lines and out_lines[-1].strip() != "":
+            out_lines.append("")
         report["preamble_kept"].append(f"{len(c_preamble)} preamble lines kept")
 
-    # Build sections in template order
-    for idx, (lvl, title_text) in enumerate(template_heads):
+    # Emit sections in template order
+    for lvl, title_text in template_heads:
         slug = slugify(title_text)
         used_slugs.add(slug)
-
-        # heading line per template
         out_lines.append("#" * lvl + " " + title_text)
 
         if slug in c_bodies:
-            # Use the candidate's body under this slug
             body = c_bodies[slug]
-            # If candidate heading had different text/level, note it as "renamed"
             if slug in cand_by_slug:
                 orig_level, orig_title = cand_by_slug[slug]
                 if orig_level != lvl or orig_title.strip() != title_text.strip():
                     report["renamed"].append(f'"{orig_title}" (H{orig_level}) -> "{title_text}" (H{lvl})')
             out_lines.extend(body)
         else:
-            # Missing in candidate → create placeholder
             if insert_placeholder:
                 out_lines.append("")
                 out_lines.append(placeholder_text)
                 out_lines.append("")
                 report["added"].append(f'Added missing section "{title_text}" (H{lvl})')
-            # else leave empty body
+            # else: leave empty
 
-        # Ensure a blank line between sections
         if out_lines and out_lines[-1].strip() != "":
             out_lines.append("")
 
-    # Append unmatched candidate sections at the end (to avoid losing content)
+    # Handle extra (unmatched) sections
     extra_slugs = [s for s in c_bodies.keys() if s not in used_slugs]
-    if extra_slugs:
+    if extra_slugs and not drop_extra:
         out_lines.append("# Unmatched sections from source")
         for s in extra_slugs:
             body = c_bodies[s]
             lvl, orig_title = cand_by_slug.get(s, (2, s))
-            # Write with a subheading preserving original title
             out_lines.append("## " + orig_title)
             out_lines.extend(body)
             if out_lines and out_lines[-1].strip() != "":
                 out_lines.append("")
             report["extra_appended"].append(orig_title)
 
-    # Reordering note (if candidate order differs)
+    # If we kept counts equal but order was different, note it
     if len(c_heads) == len(template_heads):
-        # Compare order by slugs where possible
         template_slugs = [slugify(t) for _, t in template_heads]
         cand_slugs = [slugify(t) for _, t, _, _ in c_heads]
         if template_slugs != cand_slugs:
@@ -252,8 +216,6 @@ def rebuild_to_template(
 
     fixed_text = "\n".join(out_lines).rstrip() + "\n"
     return fixed_text, report
-
-# ---------- CLI ----------
 
 def main():
     import argparse
@@ -263,6 +225,7 @@ def main():
     p.add_argument("-o", "--output", help="Output path for fixed file (default: candidate_fixed.md)")
     p.add_argument("--inplace", action="store_true", help="Overwrite candidate in place")
     p.add_argument("--no-placeholder", action="store_true", help="Do not insert placeholder text for missing sections")
+    p.add_argument("--drop-extra", action="store_true", help="Drop extra unmatched sections instead of appending them")
     args = p.parse_args()
 
     with open(args.template, "r", encoding="utf-8") as f:
@@ -273,24 +236,19 @@ def main():
     fixed, report = rebuild_to_template(
         template_text,
         candidate_text,
-        insert_placeholder=not args.no_placeholder
+        insert_placeholder=not args.no_placeholder,
+        drop_extra=args.drop_extra,
     )
 
-    if args.inplace:
-        out_path = args.candidate
-    else:
-        out_path = args.output or os.path.splitext(args.candidate)[0] + "_fixed.md"
-
+    out_path = args.candidate if args.inplace else (args.output or os.path.splitext(args.candidate)[0] + "_fixed.md")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(fixed)
 
-    # Human-friendly summary
     def print_list(label: str, items: List[str]):
-        if not items:
-            return
-        print(f"{label}:")
-        for it in items:
-            print(f"  - {it}")
+        if items:
+            print(f"{label}:")
+            for it in items:
+                print(f"  - {it}")
 
     print(f"Written fixed file: {out_path}")
     print_list("Added sections", report.get("added", []))
