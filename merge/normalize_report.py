@@ -63,7 +63,7 @@ def bullet(name):
     ]
 
 SECTIONS_TO_ENSURE = {
-    "#### **Enterprise Platform Viability**": [
+    "### **Enterprise Platform Viability**": [
         "Production-Ready Environment",
         "Roles and Responsibilities (RACI)",
         "Leadership Commitment",
@@ -71,27 +71,28 @@ SECTIONS_TO_ENSURE = {
         "Engagement and Communication",
         "Workload Understanding (App Workloads)",
     ],
-    "### B. Platform Success": [
+    "### Platform Success": [
         "DevOps Skills",
         "Automated Deployments (Automation)",
         "Release Engineering (Change Management)",
         "Site Reliability Engineering (Reliability)",
         "User Access (Access)",
     ],
-    "### C. Platform Upkeep": [
+    "### Platform Upkeep": [
         "Upgrades",
         "Operational Excellence (Day-2 Ops)",
         "Monitoring (Logging, Metrics, Alerts)",
         "Capacity Planning and Management",
         "Business Continuity and Disaster Recovery (BCDR)",
     ],
-    "### D. Platform Support": [
+    "### Platform Support": [
         "Proactive Support",
         "Compliance Coverage",
         "Escalation Processes",
         "Third-Party Services Integration",
     ],
 }
+
 
 # Inject bullets if there are no list items under the section
 for heading, items in SECTIONS_TO_ENSURE.items():
