@@ -8,62 +8,80 @@ if len(sys.argv) != 2:
 path = sys.argv[1]
 text = open(path, encoding="utf-8").read()
 
-# ---------------- 1) Collapse blank line between Findings and Resolution ----------------
-lines = text.splitlines()
-out = []
-i = 0
-while i < len(lines):
-    out.append(lines[i])
-    if re.match(r'^\s*\*Findings:\*', lines[i]):
-        # drop a single blank line if immediately followed by Resolution
-        if i + 2 < len(lines) and lines[i+1].strip() == "" and re.match(r'^\s*\*Resolution:\*', lines[i+2]):
-            i += 1
-    i += 1
-text = "\n".join(out)
-
-# ---------------- helpers to find/replace section bodies by exact heading ----------------
+# ---------- utils (slug + parsing) ----------
 HEADING_RE = re.compile(r'^(#{1,6})\s+(.+?)\s*$', re.UNICODE)
+LIST_RE    = re.compile(r'^\s*-\s+\*\*')  # bullet that starts a maturity item
 
-def find_sections(md):
-    L = md.splitlines()
+def slugify(s: str) -> str:
+    s = s.strip()
+    # drop leading "A. ", "B. ", etc and surrounding ** if any
+    s = re.sub(r'^[A-Z]\.\s*', '', s)
+    s = s.replace('**','')
+    s = s.lower()
+    s = re.sub(r'`.+?`', '', s)
+    s = re.sub(r'[^a-z0-9\s-]', '', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+def parse_sections(md: str):
+    lines = md.splitlines()
     heads = []
-    for idx, ln in enumerate(L):
+    for i, ln in enumerate(lines):
         m = HEADING_RE.match(ln)
         if m:
             level = len(m.group(1))
             title = m.group(2).strip()
-            heads.append((level, title, idx))
-    ranges = []
-    for j, (lvl, title, start) in enumerate(heads):
-        end = len(L) if j+1 == len(heads) else heads[j+1][2]
-        ranges.append((lvl, title, start, end))
-    return L, ranges
+            heads.append((level, title, slugify(title), i))
+    sections = []
+    for j, (lvl, title, slug, start) in enumerate(heads):
+        end = len(lines) if j+1 == len(heads) else heads[j+1][3]
+        sections.append({
+            "level": lvl, "title": title, "slug": slug,
+            "start": start, "end": end
+        })
+    return lines, sections
 
-def get_section_body(md, exact_title):
-    L, ranges = find_sections(md)
-    for lvl, title, start, end in ranges:
-        if title == exact_title:
-            return L[start+1:end]
+def get_body_by_slug(md: str, want_slug: str):
+    lines, sections = parse_sections(md)
+    for s in sections:
+        if s["slug"] == want_slug:
+            return lines[s["start"]+1:s["end"]]
     return None
 
-def replace_section_body(md, exact_title, new_body_lines):
-    L, ranges = find_sections(md)
-    for lvl, title, start, end in ranges:
-        if title == exact_title:
-            return "\n".join(L[:start+1] + new_body_lines + L[end:])
+def replace_body_by_slug(md: str, want_slug: str, new_body_lines):
+    lines, sections = parse_sections(md)
+    for s in sections:
+        if s["slug"] == want_slug:
+            start, end = s["start"], s["end"]
+            return "\n".join(lines[:start+1] + new_body_lines + lines[end:])
     return md
 
-# ---------------- 2) Ensure maturity subsections have bullets ----------------
-def bullet(name):
+# ---------- 1) Collapse blank line between Findings and Resolution ----------
+def collapse_findings_resolution(md: str) -> str:
+    L = md.splitlines()
+    out = []
+    i = 0
+    while i < len(L):
+        out.append(L[i])
+        if re.match(r'^\s*\*Findings:\*', L[i]):
+            if i + 2 < len(L) and L[i+1].strip() == "" and re.match(r'^\s*\*Resolution:\*', L[i+2]):
+                i += 1  # skip the blank line
+        i += 1
+    return "\n".join(out)
+
+text = collapse_findings_resolution(text)
+
+# ---------- 2) Ensure maturity subsections have bullets ----------
+def bullet(name: str):
     return [
         f"- **{name} (Score: ) (Priority level: ) (Personas: )**  ",
         "  *Findings:* ...  ",
         "  *Resolution:* ...",
-        ""  # blank line between items is OK
+        ""
     ]
 
-SECTIONS_TO_ENSURE = {
-    "### **Enterprise Platform Viability**": [
+NEEDED = {
+    "enterprise platform viability": [
         "Production-Ready Environment",
         "Roles and Responsibilities (RACI)",
         "Leadership Commitment",
@@ -71,21 +89,21 @@ SECTIONS_TO_ENSURE = {
         "Engagement and Communication",
         "Workload Understanding (App Workloads)",
     ],
-    "### Platform Success": [
+    "platform success": [
         "DevOps Skills",
         "Automated Deployments (Automation)",
         "Release Engineering (Change Management)",
         "Site Reliability Engineering (Reliability)",
         "User Access (Access)",
     ],
-    "### Platform Upkeep": [
+    "platform upkeep": [
         "Upgrades",
         "Operational Excellence (Day-2 Ops)",
         "Monitoring (Logging, Metrics, Alerts)",
         "Capacity Planning and Management",
         "Business Continuity and Disaster Recovery (BCDR)",
     ],
-    "### Platform Support": [
+    "platform support": [
         "Proactive Support",
         "Compliance Coverage",
         "Escalation Processes",
@@ -93,20 +111,19 @@ SECTIONS_TO_ENSURE = {
     ],
 }
 
-
-# Inject bullets if there are no list items under the section
-for heading, items in SECTIONS_TO_ENSURE.items():
-    body = get_section_body(text, heading)
+for slug, items in NEEDED.items():
+    body = get_body_by_slug(text, slug)
     if body is None:
-        continue  # heading not found (should not happen if template is fixed)
-    has_bullets = any(re.match(r'^\s*-\s*\*\*', ln) for ln in body)
+        # Section missing entirely: skip (validator will fail for a different reason)
+        continue
+    has_bullets = any(LIST_RE.match(ln) for ln in body)
     if not has_bullets:
         new_body = []
         for n in items:
             new_body += bullet(n)
-        text = replace_section_body(text, heading, new_body)
+        text = replace_body_by_slug(text, slug, new_body)
 
-# ---------------- 3) Ensure Final Maturity Score table is filled ----------------
+# ---------- 3) Ensure Final Maturity Score table is filled ----------
 def fill_maturity_table(md: str) -> str:
     pat = re.compile(
         r'(\|\s*Rubric\s*\|\s*Current %\s*\|\s*Target %\s*\|\s*\n'
@@ -114,6 +131,13 @@ def fill_maturity_table(md: str) -> str:
         r'(?P<body>(?:\|\s*.*\s*\|\s*.*\s*\|\s*.*\s*\|\s*\n)+))',
         re.IGNORECASE
     )
+    def fmt_pct(p):
+        p = p.replace('%','').strip()
+        try:
+            v = float(p)
+        except:
+            return "0.00 %"
+        return f"{v:.2f} %"
     def repl(m):
         body = m.group('body')
         out = []
@@ -124,16 +148,10 @@ def fill_maturity_table(md: str) -> str:
             if len(cols) < 5:
                 out.append(row); continue
             rubric, curr, targ = cols[1], cols[2], cols[3]
-            def fmt(p):
-                p = p.replace("%","").strip()
-                try:
-                    v = float(p)
-                except:
-                    return "0.00 %"
-                return f"{v:.2f} %"
-            if rubric.lower() in ("viability","success","upkeep","support","overall"):
-                curr = fmt(curr) if curr else "0.00 %"
-                targ = fmt(targ) if targ else "0.00 %"
+            key = rubric.lower()
+            if key in ("viability","success","upkeep","support","overall"):
+                curr = fmt_pct(curr) if curr else "0.00 %"
+                targ = fmt_pct(targ) if targ else "0.00 %"
                 row = f"| {rubric} | {curr} | {targ} |\n"
             out.append(row)
         return m.group(1).replace(body, "".join(out))
@@ -141,7 +159,7 @@ def fill_maturity_table(md: str) -> str:
 
 text = fill_maturity_table(text)
 
-# ---------------- 4) Ensure Technical Focus table values are filled ----------------
+# ---------- 4) Ensure Technical Focus table cells are filled ----------
 def fill_tech_table(md: str) -> str:
     L = md.splitlines()
     out = []
@@ -173,8 +191,8 @@ def fill_tech_table(md: str) -> str:
 
 text = fill_tech_table(text)
 
-# ---------------- write back ----------------
+# ---------- write back ----------
 with open(path, "w", encoding="utf-8") as f:
     f.write(text)
 
-print("normalize_report.py: normalization completed.")
+print("normalize_report.py: normalization completed (slug-aware).")
