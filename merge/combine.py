@@ -23,102 +23,211 @@ def merge_reports(api_key, ai_report, qa_report, prompt_path):
                 "role": "user",
                 "content": (
                     """
-You are a senior Kubernetes and DevOps consultant. You are given two separate assessment documents:
+You are a senior Kubernetes and DevOps consultant.
 
-1. A machine-generated report created from automated scans and analysis.
-2. A QA-reviewed report containing rubric-based scores, findings from interviews, and manual insights.
+You are given two input documents:
+1. A machine-generated assessment report.
+2. A QA-reviewed assessment report.
 
-Your task is to analyze both of these **in full** and generate a new, unified assessment report. 
+Your task is to merge both sources into a **single, unified final Kubernetes assessment report**.
 
-This should not be a side-by-side merge. Instead, **you must absorb and fully understand the insights from both sources**, then **rewrite the entire report from scratch**, combining the strongest, clearest, and most relevant findings from both.
+## STRUCTURE & FORMATTING RULES (CRITICAL):
+- Reproduce **exactly** the structure, headings, formatting marks, and symbols of the template provided below.
+- Keep **all** markdown symbols (`#`, `##`, `###`, `-`, `*`, `:`, `|`, etc.) exactly as they appear.
+- Do not reorder, rename, or remove any headings.
+- If a section has no content, leave it empty (only the heading remains). Do **not** insert placeholders or explanations such as “This section was missing”.
+- Do not add any new sections, bullets, footers, or comments.
+- Do not alter spacing, heading levels, or bullet formatting.
+- Your output must match this structure **100%**, so it passes automated validation.
+- Do not include any reference to the source documents.
 
-**Instructions:**
-- First, carefully read and comprehend both the AI-generated and QA-reviewed documents.
-- Then, write a single **executive-level assessment** as if it were delivered by a consulting firm to a CISO, CTO, or VP of Engineering.
-- The tone must be clear, formal, and professionally composed.
-- The resulting report must **use the structure below**, and all sections should reflect **merged, synthesized insights**.
+## WRITING STYLE:
+- Formal and executive tone (CISO/CTO level).
+- Synthesized insights — speak as one unified expert, not two sources.
+- Concise, factual, and structured.
+- Use bullet points and subheadings where already in the template, nowhere else.
 
----
+## TEMPLATE TO FOLLOW EXACTLY:
 
 # Final Kubernetes Assessment Report
 
 ## Executive Summary
 
-Summarize the most important conclusions. This includes:
-- Platform maturity and readiness
-- Major gaps or risks
-- Positive trends or strengths
-- What leadership should prioritize in the next 90 days
-
 ## 1. Critical Risks
 
-List the 4–5 highest-impact risks across the platform.  
-For each:
-- Title  
-- Business Impact  
-- Solution (Immediate, Short-term, Long-term)
+### 1. **Insufficient Business Continuity and Disaster Recovery (BCDR) Planning**
 
-Do not mention scanner tools or source names. Write as if the risks were discovered through a full audit.
+**Business Impact:**  
+...
+
+**Solution:**  
+- **Immediate:** ...
+- **Short-term:** ...
+- **Long-term:** ...
+
+---
+
+### 2. **Weak Container Image Management and Security**
+
+**Business Impact:**  
+...
+
+**Solution:**  
+- **Immediate:** ...
+- **Short-term:** ...
+- **Long-term:** ...
+
+---
+
+### 3. **Inadequate Infrastructure Automation and Configuration Management**
+
+**Business Impact:**  
+...
+
+**Solution:**  
+- **Immediate:** ...
+- **Short-term:** ...
+- **Long-term:** ...
+
+---
+
+### 4. **Deficient Security Controls and User Access Management**
+
+**Business Impact:**  
+...
+
+**Solution:**  
+- **Immediate:** ...
+- **Short-term:** ...
+- **Long-term:** ...
+
+---
+
+### 5. **Limited Monitoring, Logging, and Observability**
+
+**Business Impact:**  
+...
+
+**Solution:**  
+- **Immediate:** ...
+- **Short-term:** ...
+- **Long-term:** ...
 
 ## 2. Platform Maturity Scoring
 
-Group observations under the four main pillars:
+#### **Enterprise Platform Viability**
 
-### A. Enterprise Platform Viability
-- Production-Ready Environment  
-- Roles and Responsibilities  
-- Leadership Commitment  
-- Security Integration  
-- Engagement and Communication  
-- Workload Understanding  
+- **Production-Ready Environment (Score: )**  
+  *...*
+
+- **Roles and Responsibilities (RACI) (Score: )**  
+  *...*
+
+- **Leadership Commitment (Score: )**  
+  *...*
+
+- **Security Integration (Score: )**  
+  *...*
+
+- **Engagement and Communication (Score: )**  
+  *...*
+
+- **Workload Understanding (App Workloads) (Score: )**  
+  *...*
 
 ### B. Platform Success
-- DevOps Skills  
-- Automated Deployments  
-- Release Engineering  
-- Site Reliability Engineering  
-- User Access  
+
+- **DevOps Skills (Score: )**  
+  *...*
+
+- **Automated Deployments (Automation) (Score: )**  
+  *...*
+
+- **Release Engineering (Change Management) (Score: )**  
+  *...*
+
+- **Site Reliability Engineering (Reliability) (Score: )**  
+  *...*
+
+- **User Access (Access) (Score: )**  
+  *...*
 
 ### C. Platform Upkeep
-- Upgrades  
-- Day-2 Operations  
-- Monitoring and Alerts  
-- Capacity Planning  
-- Disaster Recovery  
+
+- **Upgrades (Score: )**  
+  *...*
+
+- **Operational Excellence (Day-2 Ops) (Score: )**  
+  *...*
+
+- **Monitoring (Logging, Metrics, Alerts) (Score: )**  
+  *...*
+
+- **Capacity Planning and Management (Score: )**  
+  *...*
+
+- **Business Continuity and Disaster Recovery (BCDR) (Score: )**  
+  *...*
 
 ### D. Platform Support
-- Proactive Support  
-- Compliance  
-- Escalation Handling  
-- Third-Party Tooling  
 
-For each item:
-- Give a score from 1 to 5
-- Write a short paragraph explaining the evidence, strengths, and what to improve
+- **Proactive Support (Score: )**  
+  *...*
+
+- **Compliance Coverage (Score: )**  
+  *...*
+
+- **Escalation Processes (Score: )**  
+  *...*
+
+- **Third-Party Services Integration (Score: )**  
+  *...*
 
 ## 3. Final Maturity Score
 
-Estimate the overall maturity score using this formula:
-Maturity = (Viability × 30 + Success × 25 + Upkeep × 25 + Support × 20) ÷ 100  
-If exact numbers are not possible, estimate it based on the full review.
+| Rubric      | Current % | Target % |
+|-------------|-----------|----------|
+| Viability   |           |          |
+| Success     |           |          |
+| Upkeep      |           |          |
+| Support     |           |          |
+|-------------|-----------|----------|
+| Overall     |           |          |
 
 ## 4. Compliance Posture
 
-Summarize the platform's alignment with compliance expectations (e.g., RBAC, audit logging, backup practices, IAM).  
-Estimate an overall compliance score in % if possible.
-
 ## 5. Recommendations Summary
 
-Summarize key actions across three time horizons:
-- Immediate (next 2 weeks)
-- Short-term (30–90 days)
-- Strategic (6–12 months)
+- **Immediate (Next 2 Weeks):**
+  - ...
 
-## Formatting and Language Guidelines:
-- Use bullet points only where it aids clarity — prefer paragraphs where possible.
-- Do not repeat findings from both sources. Combine them into cohesive insights.
-- Don’t say “in the AI report” or “according to QA”. Speak as one voice.
-- Don’t use raw data, JSON, or scanner terminology.
+- **Short-term (30–90 Days):**
+  - ...
+
+- **Strategic (6–12 Months):**
+  - ...
+
+## 6. Technical Focus Area Scores
+
+| Area                 | Score (0–2) | Justification                                                                                      |
+|----------------------|-------------|----------------------------------------------------------------------------------------------------|
+| Installation         |             |                                                                                                    |
+| Configuration        |             |                                                                                                    |
+| Provisioning         |             |                                                                                                    |
+| Deployment           |             |                                                                                                    |
+| High Availability    |             |                                                                                                    |
+| Scalability          |             |                                                                                                    |
+| Performance          |             |                                                                                                    |
+| Networking           |             |                                                                                                    |
+| Security             |             |                                                                                                    |
+| Metrics              |             |                                                                                                    |
+| Logs                 |             |                                                                                                    |
+| Backup and Restore   |             |                                                                                                    |
+| Cost Optimization    |             |                                                                                                    |
+| Documentation        |             |                                                                                                    |
+| Tests                |             |                                                                                                    |
+
+# Conclusion
 
 ---
 
