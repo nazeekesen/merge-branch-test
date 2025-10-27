@@ -66,73 +66,92 @@ Insufficient monitoring and logging capabilities impede the ability to detect, d
 
 ## 2. Platform Maturity Scoring
 
-#### **Enterprise Platform Viability**
+### **Enterprise Platform Viability**
 
-- **Production-Ready Environment (Score: 2)**  
-  *The environment has foundational production capabilities but requires enhancements in infrastructure resilience and deployment automation to achieve full operational readiness.*
+- **Production-Ready Environment (Score: 4) (Priority level: 2) (Personas: Operator)**
+  *Findings:* The platform is upgraded to Kubernetes 1.30, but Day-1 guardrails are not uniformly enforced across namespaces. Gaps in baseline policies and rollout runbooks increase the chance of configuration drift and inconsistent behavior.
+  *Resolution:* Enforce Pod Security Standards and admission policies cluster-wide with clear exceptions. Finalize Day-1 runbooks (provisioning, deployment, rollback) and make them mandatory via CI/CD templates.
 
-- **Roles and Responsibilities (RACI) (Score: 1)**  
-  *Roles and responsibilities are partially defined, leading to potential overlaps and gaps. Clear delineation and documentation of roles are necessary to improve accountability.*
+- **Roles and Responsibilities (RACI) (Score: 4) (Priority level: 3) (Personas: Operator, Manager)**
+  *Findings:* There are gaps in granting new operators the correctly scoped permissions to perform Kubernetes management tasks. We also observe cases where tasks require or assume root execution.
+  *Resolution:* Review and audit Azure Service Principals (SPs) and role assignments to enforce least privilege and remove excessive permissions. Enforce security policies that prevent containers from running as root and require least-privilege execution by default.
 
-- **Leadership Commitment (Score: 4)**  
-  *Leadership demonstrates strong commitment to the Kubernetes platform, providing necessary resources and support to drive its adoption and improvement.*
+- **Leadership Commitment (Score: 3) (Priority level: 2) (Personas: Operator, Manager, Developer)**
+  *Findings:* The platform roadmap exists informally but lacks resourcing and time-boxed milestones. Competing priorities lead to a growing backlog of reliability and security tasks.
+  *Resolution:* Issue a funded, milestone-based plan with quarterly OKRs tied to risk reduction. Run monthly execution reviews to unblock dependencies and track progress to target maturity.
 
-- **Security Integration (Score: 2)**  
-  *Basic security measures are in place, but comprehensive integration across all platform components is lacking. Enhanced security protocols are needed to mitigate risks effectively.*
+- **Security Integration (Score: 4) (Priority level: 1) (Personas: Auditor)**
+  *Findings:* RBAC and network policies are present, but fine-grained controls and continuous enforcement are inconsistent. Some namespaces bypass policy checks, increasing the chance of privilege drift.
+  *Resolution:* Codify least-privilege roles, deny rules, and exception paths as code with automated validation. Add continuous compliance scans and block non-conformant changes before they reach production.
 
-- **Engagement and Communication (Score: 1)**  
-  *There is limited engagement and communication among teams, hindering collaboration and knowledge sharing. Improved communication channels are required to foster a collaborative environment.*
+- **Engagement and Communication (Score: 3) (Priority level: 2) (Personas: Operator, Manager)**
+  *Findings:* Follow-ups on recommendations are sporadic, allowing tasks to stall without visibility. Vendor limits and contract milestones are not always tracked against upgrade plans.
+  *Resolution:* Establish a biweekly stakeholder sync with a visible action register and owners. Track vendor licenses and support windows alongside the platform roadmap to prevent surprises.
 
-- **Workload Understanding (App Workloads) (Score: 3)**  
-  *There is a basic understanding of application workloads; however, deeper insights into performance optimization and resource allocation are necessary for better management.*
+- **Workload Understanding (App Workloads) (Score: 3) (Priority level: 2) (Personas: Operator, Manager, Developer)**
+  *Findings:*Teams show uneven understanding of scheduling, requests/limits, and rollout strategies, causing resource contention and slow deployments. Gaps in workload planning reduce performance under peak load.
+  *Resolution:* rovide targeted training on Kubernetes scheduling, resource management, and release strategies. Publish golden templates and run clinics to tune critical services with hands-on support.
 
-### B. Platform Success
+### Platform Success
 
-- **DevOps Skills (Score: 3)**  
-  *The team possesses commendable DevOps skills, enabling effective management and deployment of applications. Ongoing training will sustain and enhance these capabilities.*
+- **Operator & Developer Skills (DevOps Skills) (Score: 3) (Priority level: 2) (Personas: Operator, Manager, Developer)**
+  *Findings:* The team has solid foundational DevOps capabilities and can handle routine platform management and application deployments. Depth in advanced practices is limited, which constrains platform efficiency and scalability.
+  *Resolution:* Deliver targeted, hands-on training and mentorship to build advanced DevOps proficiency (automation, reliability, security-by-default). Establish a continuous upskilling plan aligned to evolving tools and practices to raise overall adaptability.
 
-- **Automated Deployments (Automation) (Score: 3)**  
-  *Deployment processes are partially automated, leading to occasional manual interventions. Expanding automation coverage is essential to minimize errors and accelerate deployments.*
+- **Automated Deployments (Score: 4) (Priority level: 2) (Personas: Operator, Developer)**
+  *Findings:* CI/CD coverage is strong, yet deeper security and policy gates are not universal. Some pipelines allow unsigned images or lack pre-deploy conformance checks.
+  *Resolution:* Add image signing/scanning, IaC validation, and admission-policy tests to all pipelines. Require canary/blue-green rollout strategies with automatic rollback on SLO or health-check breach.
 
-- **Release Engineering (Change Management) (Score: 2)**  
-  *Change management and release engineering practices are underdeveloped, increasing the risk of disruptions during deployments. Implementing robust release protocols is necessary.*
+- **Release Engineering (Score: 3) (Priority level: 2) (Personas: Operator, Manager)**
+  *Findings:* change management is partially defined and inconsistently applied. This results in occasional release friction and elevates the risk of disruption during complex or cross-team deployments.
+  *Resolution:* Standardize a release engineering workflow with clear gates (change tickets, approvals, pre-deploy checks, rollback plans) and environment-promotion checklists.
+- **Site Reliability Engineering (Score: 4) (Priority level: 1) (Personas: Operator, Developer)**
+  *Findings:* Baseline reliability is solid, but redundancy/failover rehearsals are infrequent. Autoscaling policies are conservative and can lag real demand during spikes.
+  *Resolution:* Schedule quarterly failover and DR exercises with success criteria and action items. Tune HPA and stabilization windows based on load tests.
 
-- **Site Reliability Engineering (Reliability) (Score: 3)**  
-  *Basic site reliability practices are in place, providing a foundation for stable operations. Enhancing SRE practices will improve system uptime and resilience.*
+- **User Access (Score: 3) (Priority level: 3) (Personas: Operator)**
+  *Findings:* Over-permissive roles and wildcard verbs still exist in several namespaces. Break-glass accounts are not consistently time-boxed or logged with business justification.
+  *Resolution:* Refactor roles to least-privilege with deny-by-default patterns. Automate quarterly access reviews and alert on privileged verb usage outside change windows.
 
-- **User Access (Access) (Score: 2)**  
-  *User access controls are inadequately managed, raising security concerns. Strengthening access management strategies is critical to ensure proper authorization.*
+### Platform Upkeep
 
-### C. Platform Upkeep
+- **Upgrades (Score: 3) (Priority level: 1) (Personas: Operator)**
+  *Findings:* System upgrades are performed regularly; however, they lack comprehensive planning and thorough testing, increasing the risk of disruptions.The estate is on Kubernetes 1.30, which has a finite support window per provider; operating past that window increases security and compliance risk.
+  *Resolution:* Establish a structured upgrade schedule with detailed planning and rigorous testing procedures to ensure seamless updates with minimal impact.
 
-- **Upgrades (Score: 2)**  
-  *System upgrades occur regularly but lack comprehensive planning and testing, risking potential disruptions. Structured upgrade schedules and thorough testing are needed.*
+- **Operational Excellence (Day-2 Ops) (Score: 4) (Priority level: 2) (Personas: Operator, Manager)**
+  *Findings:* Day-2 operational practices are adequate but require further optimization to enhance efficiency and reliability.Some services lack robust liveness/readiness probes and health checks, which delays failure detection and masking partial outages.
+  *Resolution:* Standardize probe patterns, readiness gates, and pre/post-deployment health checks across all services. Make probes a merge-gate in CI/CD and track error-budget policy to trigger automatic rollback and incident review.
 
-- **Operational Excellence (Day-2 Ops) (Score: 3)**  
-  *Operational practices post-deployment are adequate but require further optimization through automation and best practices to enhance efficiency.*
+- **Monitoring (Logging, Metrics, Alerts) (Score: 3) (Priority level: 1) (Personas: Operator, Developer)**
+  *Findings:* Centralized logging and metrics exist, but analytics and alert routing lack service ownership context. Tracing is limited, making end-to-end latency triage slower.
+  *Resolution:* Build service-aligned dashboards with SLO/SLA indicators and actionable alerts. Enable API-server tracing in canary and integrate context-rich alerts with escalation workflows.
 
-- **Monitoring (Logging, Metrics, Alerts) (Score: 4)**  
-  *Robust monitoring systems are implemented, providing valuable insights into system performance. Continued enhancement of monitoring capabilities will ensure proactive issue resolution.*
+- **Capacity Planning and Management (Score: 4) (Priority level: 2) (Personas: Operator, Developer)**
+  *Findings:* Capacity reviews are reactive and primarily after incidents, leading to short-term fixes. Workload requests/limits are not consistently tuned to observed usage.
+  *Resolution:* Establish monthly capacity reviews with predictive analytics and planned headroom. Implement right-sizing and autoscaling policies driven by historical demand and cost targets.
 
-- **Capacity Planning and Management (Score: 3)**  
-  *Capacity planning meets current demands but lacks the sophistication to handle future growth effectively. Improved forecasting and dynamic scaling solutions are necessary.*
+- **Business Continuity and Disaster Recovery (BCDR) (Score: 3) (Priority level: 3) (Personas: Operator, Manager, Auditor)**
+  *Findings:* Backups exist, but restore validation is sporadic and DR runbooks are not regularly exercised. Recovery objectives (RPO/RTO) are not tied to business impact for all services.BCDR plans are minimally developed, leaving the platform vulnerable to operational disruptions and data loss.
+  *Resolution:* Define service-level RPO/RTO and map them to restoration playbooks. Automate backup verification and schedule DR drills with tracked outcomes and remediation.
 
-- **Business Continuity and Disaster Recovery (BCDR) (Score: 2)**  
-  *Disaster recovery plans are minimally developed, leaving the platform vulnerable to significant disruptions. Comprehensive BCDR strategies must be established.*
+### Platform Support
 
-### D. Platform Support
+- **Proactive Support (Score: 3) (Priority level: 2) (Personas: Operator, Developer, Manager)**
+  *Findings:* Health checks and alerts are present, but deeper validations like backup/restores and dependency pings are manual. Incident readiness depends heavily on individual knowledge.
+  *Resolution:* Automate periodic health validations and backup tests with results posted to a shared dashboard. Add runbook links and diagnostics to alerts so responders have immediate next steps.
 
-- **Proactive Support (Score: 1)**  
-  *Support services are primarily reactive, leading to delayed issue resolution. Transitioning to a proactive support model will enhance system reliability.*
+- **Compliance Coverage (Score: 4) (Priority level: 3) (Personas: Operator, Manager)**
+  *Findings:* Baseline controls meet minimums, but continuous evidence collection and reporting are limited. Exceptions are tracked inconsistently across teams.
+  *Resolution:* Implement continuous compliance monitoring with automated reports and alerting on drift. Centralize exception management with expiry dates and required remediation tasks.
 
-- **Compliance Coverage (Score: 3)**  
-  *Compliance measures are well-established, meeting regulatory standards. Ongoing audits and policy reviews will maintain and strengthen compliance posture.*
+- **Escalation Processes (Score: 3) (Priority level: 3) (Personas: Operator, Developer, Manager)**
+  *Findings:* Incident workflows differ by team, leading to inconsistent communication and delayed decisions. 
+  *Resolution:* Establish well-defined escalation pathways and train teams to follow standardized procedures, enhancing response times and effectiveness.
 
-- **Escalation Processes (Score: 2)**  
-  *Escalation processes are unclear and inconsistently applied, resulting in inefficiencies during critical incidents. Well-defined escalation pathways are necessary for effective incident management.*
-
-- **Third-Party Services Integration (Score: 3)**  
-  *Integration with third-party services is adequately implemented, offering benefits while maintaining security and reliability. Continued focus on secure integrations will maximize these advantages.*
+- **Third-Party Services Integration (Score: 4) (Priority level: 3) (Personas: Operator, Developer, Auditor)**
+  *Findings:* Integration with third-party services is partially implemented, offering some benefits but also introducing potential security and reliability vulnerabilities.
+  *Resolution:* Enhance integration practices by focusing on secure and reliable connections, conducting thorough security assessments, and regularly reviewing third-party service performance.
 
 ## 3. Final Maturity Score
 

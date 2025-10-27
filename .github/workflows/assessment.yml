@@ -64,7 +64,7 @@ jobs:
 
       - name: Validate fixed report structure
         run: |
-          python3 report_generation/validate_report.py \
+          python3 merge/validate_report.py \
             report_generation/data/combined_report_original.md \
             merge/output/combined_report.md
 
