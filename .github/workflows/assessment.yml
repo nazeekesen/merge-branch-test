@@ -57,11 +57,14 @@ jobs:
 
           python3 "$FIXER" "$TEMPLATE" "$CANDIDATE" --inplace --no-placeholder --drop-extra
 
-
-
-      - name: Validate structure
+      - name: Normalize report (spacing + required values)
         run: |
-          python3 merge/validate_report.py \
+          python3 merge/normalize_report.py merge/output/combined_report.md
+
+
+      - name: Validate fixed report structure
+        run: |
+          python3 report_generation/validate_report.py \
             report_generation/data/combined_report_original.md \
             merge/output/combined_report.md
 
