@@ -46,20 +46,31 @@ jobs:
           OPENAI_API_KEY: ${{ github.event.inputs.openai_api_key || secrets.OPENAI_API_KEY }}
         run: python3 merge/combine.py
 
-      - name: Auto-fix combined_report.md to match template (optional)
+      - name: Auto-fix combined_report.md to match template
         run: |
           TEMPLATE="report_generation/data/combined_report_original.md"
           CANDIDATE="merge/output/combined_report.md"
           FIXER="merge/fix_report.py"
-          if [ -f "$TEMPLATE" ] && [ -f "$FIXER" ]; then
-            python3 "$FIXER" "$TEMPLATE" "$CANDIDATE" --inplace --no-placeholder
-          else
-            echo "Auto-fix skipped"
+
+          if [ ! -f "$CANDIDATE" ]; then
+            echo "ERROR: $CANDIDATE not found."; exit 1
           fi
 
-      - name: Validate fixed report structure
+          if [ -f "$TEMPLATE" ] && [ -f "$FIXER" ]; then
+            echo "Running auto-fix to enforce strict structure..."
+            python3 "$FIXER" "$TEMPLATE" "$CANDIDATE" --inplace --no-placeholder --drop-extra
+            echo "✅ Auto-fix done."
+          else
+            echo "Auto-fix skipped: template or fixer not found."
+          fi
+
+
+      - name: Validate structure
         run: |
-          python3 merge/validate_report.py report_generation/data/combined_report_original.md merge/output/combined_report.md
+          python3 merge/validate_report.py \
+            report_generation/data/combined_report_original.md \
+            merge/output/combined_report.md
+
 
       - name: Upload merged Markdown
         uses: actions/upload-artifact@v4
