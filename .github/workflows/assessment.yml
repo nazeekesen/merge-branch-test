@@ -6,6 +6,12 @@ on:
       openai_api_key:
         description: 'OpenAI API Key (optional; uses secret if empty)'
         required: false
+      openai_project:
+        description: 'OpenAI Project ID (optional for project-scoped keys)'
+        required: false
+      openai_org_id:
+        description: 'OpenAI Org ID (optional)'
+        required: false
       run_mode:
         description: 'Choose how to run ./run.sh'
         required: true
@@ -39,11 +45,50 @@ jobs:
           if [ -f merge/requirements.txt ]; then
             python3 -m pip install -r merge/requirements.txt
           fi
-          python3 -m pip install openai
+          # Ensure recent OpenAI SDK
+          python3 -m pip install "openai>=1.50.0"
+
+      - name: Prepare OpenAI env + sanity check
+        id: prep_openai
+        run: |
+          set -euo pipefail
+
+          # Prefer workflow input if provided; else fallback to secret
+          KEY_INPUT="${{ github.event.inputs.openai_api_key }}"
+          if [ -n "${KEY_INPUT}" ]; then
+            echo "Using workflow input for OPENAI_API_KEY"
+            echo "OPENAI_API_KEY=${KEY_INPUT}" >> "$GITHUB_ENV"
+          else
+            if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+              echo "ERROR: Neither inputs.openai_api_key nor secrets.OPENAI_API_KEY is set."
+              exit 1
+            fi
+            echo "Using secret for OPENAI_API_KEY"
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> "$GITHUB_ENV"
+          fi
+
+          # Optional project/org (harmless if empty)
+          if [ -n "${{ github.event.inputs.openai_project }}" ]; then
+            echo "OPENAI_PROJECT=${{ github.event.inputs.openai_project }}" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${{ github.event.inputs.openai_org_id }}" ]; then
+            echo "OPENAI_ORG_ID=${{ github.event.inputs.openai_org_id }}" >> "$GITHUB_ENV"
+          fi
+
+          # Non-sensitive diagnostics
+          python3 - <<'PY'
+import os
+k = os.getenv("OPENAI_API_KEY","")
+print("Key present:", bool(k), "length:", len(k))
+print("Org:", os.getenv("OPENAI_ORG_ID"))
+print("Project:", os.getenv("OPENAI_PROJECT"))
+PY
 
       - name: Run merge script
         env:
-          OPENAI_API_KEY: ${{ github.event.inputs.openai_api_key || secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ env.OPENAI_API_KEY }}
+          OPENAI_ORG_ID: ${{ env.OPENAI_ORG_ID }}
+          OPENAI_PROJECT: ${{ env.OPENAI_PROJECT }}
         run: python3 merge/combine.py
 
       - name: Auto-fix combined_report.md to match template
@@ -63,7 +108,6 @@ jobs:
           python3 report_generation/validate_report.py \
             report_generation/data/combined_report_original.md \
             merge/output/combined_report.md
-
 
       - name: Upload merged Markdown
         uses: actions/upload-artifact@v4
@@ -133,7 +177,6 @@ jobs:
           fi
           echo "Starting: ${CMD}"
 
-          # Force predictable bind; app should read these if it supports them
           export HOST=0.0.0.0
           export PORT=8050
 
@@ -141,7 +184,6 @@ jobs:
           APP_PID=$!
           echo "App PID: ${APP_PID}"
 
-          # Wait up to 600s for http://127.0.0.1:8050/
           END=$((SECONDS + 600))
           OK=0
           while [ $SECONDS -lt $END ]; do
