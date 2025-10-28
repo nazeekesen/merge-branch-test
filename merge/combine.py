@@ -1,4 +1,3 @@
-import openai
 import os
 
 def load_file(path):
@@ -10,14 +9,25 @@ def save_output(text, path):
         f.write(text)
 
 def merge_reports(api_key, ai_report, qa_report, prompt_path):
+    if not api_key or not api_key.strip():
+        raise RuntimeError("OPENAI_API_KEY is not set. Provide it via env or workflow input/secret.")
+
     from openai import OpenAI
-    client = OpenAI(api_key=api_key)
+
+    # Support project-scoped keys (harmless if unset)
+    client = OpenAI(
+        api_key=api_key,
+        organization=os.getenv("OPENAI_ORG_ID"),
+        project=os.getenv("OPENAI_PROJECT"),
+    )
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")  # <-- safe default
 
     prompt_template = load_file(prompt_path)
     merged_prompt = prompt_template.format(ai=ai_report, qa=qa_report)
 
     response = client.chat.completions.create(
-        model="o1-mini-2024-09-12",
+        model=model,
         messages=[
             {
                 "role": "user",
