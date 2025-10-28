@@ -51,6 +51,15 @@ Your task is to merge both sources into a **single, unified final Kubernetes ass
 - Your output must match this structure **100%**, so it passes automated validation.
 - Do not include any reference to the source documents.
 
+## SPECIAL STRUCTURE RULES:
+- Do not add or remove sections. Use exactly the same section headings as in the template.
+- For each maturity item: 
+  - Use Findings and Resolution on consecutive lines without any blank line in between.
+- Fill all numeric values in Final Maturity Score and Technical Focus Area Scores tables.
+  - Use format: `NN.NN %` for maturity percentages.
+  - Use numeric values 0, 1, or 2 for scores, with short justification.
+- Do not add extra headings or sections like “Unmatched sections from source”.
+
 ## WRITING STYLE:
 - Formal and executive tone (CISO/CTO level).
 - Synthesized insights — speak as one unified expert, not two sources.
